@@ -64,8 +64,8 @@ func (m *seedAssignmentPrimaryKeyMigrator) Exec(sess *xorm.Session, mig *migrato
 	driver := mig.Dialect.DriverName()
 
 	if driver == migrator.MySQL {
-		_, err := sess.Exec("ALTER TABLE seed_assignment ADD id INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (id)")
-		return err
+		// 手动创建，tidb 暂时不支持修改主键
+		_, _ := sess.Exec("ALTER TABLE seed_assignment ADD id INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (id)")
 	} else if driver == migrator.Postgres {
 		_, err := sess.Exec("ALTER TABLE seed_assignment ADD COLUMN id SERIAL PRIMARY KEY")
 		return err
