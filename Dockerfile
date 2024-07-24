@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG BASE_IMAGE=alpine:3.19.1
+ARG BASE_IMAGE=alpine:3.20
 ARG JS_IMAGE=node:20-alpine
 ARG JS_PLATFORM=linux/amd64
 ARG GO_IMAGE=golang:1.22.4-alpine
@@ -23,6 +23,7 @@ COPY LICENSE ./
 
 RUN apk add --no-cache make build-base python3
 
+RUN npm config set registry https://registry.npm.taobao.org
 RUN yarn install --immutable
 
 COPY tsconfig.json .eslintrc .editorconfig .browserslistrc .prettierrc.js ./
@@ -62,6 +63,8 @@ COPY pkg/build/wire/go.* pkg/build/wire/
 COPY pkg/promlib/go.* pkg/promlib/
 COPY pkg/storage/unified/resource/go.* pkg/storage/unified/resource/
 
+ENV GO111MODULE=on
+ENV GOPROXY=https://goproxy.cn,direct
 RUN go mod download
 RUN if [[ "$BINGO" = "true" ]]; then \
       go install github.com/bwplotka/bingo@latest && \
@@ -83,7 +86,7 @@ COPY .github .github
 ENV COMMIT_SHA=${COMMIT_SHA}
 ENV BUILD_BRANCH=${BUILD_BRANCH}
 
-RUN make build-go GO_BUILD_TAGS=${GO_BUILD_TAGS} WIRE_TAGS=${WIRE_TAGS}
+RUN make build-go 
 
 FROM ${BASE_IMAGE} as tgz-builder
 

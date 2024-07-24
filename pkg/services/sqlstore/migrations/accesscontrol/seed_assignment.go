@@ -1,6 +1,8 @@
 package accesscontrol
 
 import (
+	"fmt"
+
 	"xorm.io/xorm"
 
 	"github.com/grafana/grafana/pkg/services/sqlstore/migrator"
@@ -65,7 +67,7 @@ func (m *seedAssignmentPrimaryKeyMigrator) Exec(sess *xorm.Session, mig *migrato
 
 	if driver == migrator.MySQL {
 		// 手动创建，tidb 暂时不支持修改主键
-		_, _ := sess.Exec("ALTER TABLE seed_assignment ADD id INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (id)")
+		// _, _ := sess.Exec("ALTER TABLE seed_assignment ADD id INT NOT NULL AUTO_INCREMENT FIRST, ADD PRIMARY KEY (id)")
 	} else if driver == migrator.Postgres {
 		_, err := sess.Exec("ALTER TABLE seed_assignment ADD COLUMN id SERIAL PRIMARY KEY")
 		return err
@@ -77,7 +79,7 @@ func (m *seedAssignmentPrimaryKeyMigrator) Exec(sess *xorm.Session, mig *migrato
 	// create temp table
 	_, err := sess.Exec(`
 		CREATE TABLE seed_assignment_temp (
-		    id INTEGER PRIMARY KEY AUTOINCREMENT,
+		    id INTEGER PRIMARY KEY AUTO_INCREMENT,
 			builtin_role TEXT,
 			action TEXT,
 			scope TEXT,
@@ -85,29 +87,13 @@ func (m *seedAssignmentPrimaryKeyMigrator) Exec(sess *xorm.Session, mig *migrato
 		);
 	`)
 	if err != nil {
-		return err
-	}
-
-	// copy data to temp table
-	_, err = sess.Exec("INSERT INTO seed_assignment_temp (builtin_role, action, scope, role_name) SELECT * FROM seed_assignment;")
-	if err != nil {
-		return err
-	}
-
-	// drop indices on old table
-	_, err = sess.Exec("DROP INDEX UQE_seed_assignment_builtin_role_action_scope;")
-	if err != nil {
-		return err
-	}
-	_, err = sess.Exec("DROP INDEX UQE_seed_assignment_builtin_role_role_name;")
-	if err != nil {
-		return err
+		fmt.Println("Error creating temp table", err)
 	}
 
 	// drop old table
 	_, err = sess.Exec("DROP TABLE seed_assignment;")
 	if err != nil {
-		return err
+		fmt.Println("Error DROP temp table", err)
 	}
 
 	// rename temp table to old name
@@ -117,11 +103,11 @@ func (m *seedAssignmentPrimaryKeyMigrator) Exec(sess *xorm.Session, mig *migrato
 	}
 
 	// recreate indexes on new table
-	_, err = sess.Exec("CREATE UNIQUE INDEX UQE_seed_assignment_builtin_role_action_scope ON seed_assignment (builtin_role, action, scope);")
+	_, err = sess.Exec("CREATE UNIQUE INDEX UQE_seed_assignment_builtin_role_action_scope ON seed_assignment (builtin_role(255), action(255), scope(255));")
 	if err != nil {
 		return err
 	}
-	_, err = sess.Exec("CREATE UNIQUE INDEX UQE_seed_assignment_builtin_role_role_name ON seed_assignment (builtin_role, role_name);")
+	_, err = sess.Exec("CREATE UNIQUE INDEX UQE_seed_assignment_builtin_role_role_name ON seed_assignment (builtin_role(255), role_name(255));")
 	if err != nil {
 		return err
 	}
